@@ -67,8 +67,8 @@ int main (int argc, char *argv[]) {
 			shmPtr[0] = temp;
         	}
     	}
-
-    	wait (&status);
+	#Just for debugging
+    	#wait (&status);
     	printf ("Values: %li\t%li\n", shmPtr[0], shmPtr[1]);
 
 	sleep(16);
