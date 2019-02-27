@@ -11,12 +11,12 @@
 #define SIZE 16
 
 int main (int argc, char *argv[]) {
-	int status;
+	int status, shmId, semId;
 	long int i, loop, temp, *shmPtr;
-    	int shmId, semId;
-    	pid_t pid;
+    	sem_t semvar;
+	pid_t pid;
 	key_t semKey;
-	char *path = "/home/ramijavi/CIS452/lab5/README.md";
+	char *path = "/home/ramijavi/CIS452/lab6/sampleProgram1.c";
 
 	loop = atoi(argv[1]);
 
@@ -30,8 +30,11 @@ int main (int argc, char *argv[]) {
         	exit (1);
     	}
 
-	semKey = ftok(path,1);
-	if((semId = semget(semKey, 1, 00600)) < 0){
+	if((semKey = ftok(path,1)) < 0){
+		perror("Ftok failed\n");
+	}
+	printf("semKey: %d\n", semKey);
+	if((semId = semget(semKey, 1, 0600|IPC_CREAT)) < 0){
 		perror ("Couln't create semaphore\n");
 		exit(1);
 	}
