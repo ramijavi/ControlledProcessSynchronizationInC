@@ -7,6 +7,7 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/sem.h>
+#include <errno.h>
 
 #define SIZE 16
 #define PATH_SIZE 128
@@ -44,7 +45,7 @@ int main (int argc, char *argv[]) {
         perror("Ftok failed\n");
     }
     printf("semKey: %d\n", semKey);
-    if((semId = semget(semKey, 1, 0600|IPC_CREAT)) < 0){
+    if((semId = semget(semKey, 2, 0600 | IPC_CREAT)) < 0){
         perror ("Couln't create semaphore\n");
         exit(1);
     }
@@ -54,54 +55,70 @@ int main (int argc, char *argv[]) {
         exit(1);
     }
 
+    if(semctl(semId, 1, SETVAL, 0) < 0){
+        perror("Couldn't initialize semaphore\n");
+        exit(1);
+    }
+
     shmPtr[0] = 0;
     shmPtr[1] = 1;
 
     if (!(pid = fork ())) {
-        printf("Child SemID: %d\n", semId);
         //CHILD PROCESS
-
         for (i = 0; i < loop; i++) {
+            printf("Child SemID: %d\n", semId);
+            printf("Semval: %d\n", semctl(semId, 0, GETVAL));
+
             //wait
-            if (semop(semId, &wait, 1) == -1) {
-                printf("failed to wait in child\n");
+            if (semop(semId, &wait, 0) == -1) {
+                //printf("failed to wait in child: %s\n");
+                perror("failed to wait in child");
                 exit(2);
             }
 
+            printf("Semval child critical section: %d\n", semctl(semId, 0, GETVAL));
             temp = shmPtr[0];
             shmPtr[0] = shmPtr[1];
             shmPtr[1] = temp;
 
             //signal
             if (semop(semId, &signal, 1) == -1) {
-                printf("failed to signal in child\n");
+                //printf("failed to signal in child\n");
+                perror("failed to signal in child");
                 exit(2);
             }
+
+            printf("Semval child after signal: %d\n", semctl(semId, 0, GETVAL));
         }
         if (shmdt (shmPtr) < 0) {
             perror ("Child couldn't dettach from shared memory\n");
             exit (1);
         }
+
         exit (0);
     }
     else {
-        printf("Parent SemID: %d\n", semId);
         //PARENT PROCESS
         for (i = 0; i < loop; i++) {
-
+            printf("Parent SemID: %d\n", semId);
+            printf("Semval parent before wait: %d\n", semctl(semId, 0, GETVAL));
             if (semop(semId, &wait, 1) == -1) {
-                printf("failed to wait in parent\n");
+
+                perror("failed to wait in child");
                 exit(2);
             }
 
+            printf("Semval parent critical section: %d\n", semctl(semId, 0, GETVAL));
             temp = shmPtr[1];
             shmPtr[1] = shmPtr[0];
             shmPtr[0] = temp;
 
-            if (semop(semId, &signal, 1) == -1) {
-                printf("failed to signal in parent\n");
+            if (semop(semId, &signal, 0) == -1) {
+                perror("failed to signal in child");
+                //printf("failed to signal in parent\n");
                 exit(2);
             }
+            printf("Semval parent after signal: %d\n", semctl(semId, 0, GETVAL));
         }
     }
     //	#Just for debugging
