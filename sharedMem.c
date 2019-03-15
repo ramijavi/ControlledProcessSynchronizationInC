@@ -106,11 +106,9 @@ int main (int argc, char *argv[]) {
             }
         }
     }
-    //	#Just for debugging
+    wait(&status);
     printf ("Values: %li\t%li\n", shmPtr[0], shmPtr[1]);
     
-    wait(&status);
-
     if (shmdt (shmPtr) < 0) {
         perror ("Couldn't dettach from shared memory\n");
         exit (1);
